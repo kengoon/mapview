@@ -9,7 +9,7 @@ from os.path import dirname, join
 
 from kivy.clock import Clock
 from kivy.compat import string_types
-from kivy.graphics import Canvas, Color, Rectangle
+from kivy.graphics import Canvas, Color, Rectangle, SmoothLine
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -271,6 +271,24 @@ class MarkerMapLayer(MapLayer):
     def unload(self):
         self.clear_widgets()
         del self.markers[:]
+
+
+class PolylineLayer(MapLayer):
+    def __init__(self, coordinates, **kwargs):
+        super().__init__(**kwargs)
+        self.coordinates = coordinates
+
+    def reposition(self):
+        mapview = self.parent
+        with self.canvas:
+            self.canvas.clear()
+            Color(1, 0, 0, 1)  # Red color for the polyline
+            points = []
+            for lat, lon in self.coordinates:
+                x, y = mapview.get_window_xy_from(lat, lon, mapview.zoom)
+                points.extend([x, y])
+            if points:
+                SmoothLine(points=points, width=2, joint='round', cap='round')
 
 
 class MapViewScatter(Scatter):
