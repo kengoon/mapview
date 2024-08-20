@@ -1,6 +1,13 @@
 # coding=utf-8
 
-__all__ = ["MapView", "MapMarker", "MapMarkerPopup", "MapLayer", "MarkerMapLayer"]
+__all__ = [
+    "MapView",
+    "MapMarker",
+    "MapMarkerPopup",
+    "MapLayer",
+    "MarkerMapLayer",
+    "PolylineLayer"
+]
 
 import webbrowser
 from itertools import takewhile
@@ -12,7 +19,6 @@ from kivy.compat import string_types
 from kivy.graphics import Canvas, Color, Rectangle, SmoothLine
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
-from kivy.metrics import dp
 from kivy.properties import (
     AliasProperty,
     BooleanProperty,
@@ -20,6 +26,7 @@ from kivy.properties import (
     NumericProperty,
     ObjectProperty,
     StringProperty,
+    ColorProperty,
 )
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import Image
@@ -93,6 +100,16 @@ Builder.load_string(
         y: root.top
         center_x: root.center_x
         size: root.popup_size
+        
+<PolyLineLayer>:
+    canvas:
+        Color:
+            rgba: self.line_color
+        SmoothLine:
+            width: 2
+            joint: 'round'
+            cap: 'round'
+        
 
 """
 )
@@ -274,21 +291,21 @@ class MarkerMapLayer(MapLayer):
 
 
 class PolylineLayer(MapLayer):
-    def __init__(self, coordinates, **kwargs):
+    line_color = ColorProperty("red")
+    coordinates = ListProperty()
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.coordinates = coordinates
+        self.bind(coordinates=lambda *_: self.reposition())
 
     def reposition(self):
         mapview = self.parent
-        with self.canvas:
-            self.canvas.clear()
-            Color(1, 0, 0, 1)  # Red color for the polyline
-            points = []
-            for lat, lon in self.coordinates:
-                x, y = mapview.get_window_xy_from(lat, lon, mapview.zoom)
-                points.extend([x, y])
-            if points:
-                SmoothLine(points=points, width=2, joint='round', cap='round')
+        points = []
+        for lat, lon in self.coordinates:
+            x, y = mapview.get_window_xy_from(lat, lon, mapview.zoom)
+            points.extend([x, y])
+        if points:
+            self.canvas.children[2].points = points
 
 
 class MapViewScatter(Scatter):
