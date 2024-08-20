@@ -86,7 +86,7 @@ def get_bounding_box_center(locations):
     return center_lat, center_lon
 
 
-def get_fit_zoom_level(locations, map_width, map_height):
+def get_fit_zoom_level(locations, map_width, map_height, tile_size=256):
     """
     Calculates the zoom level to fit all locations into the map view.
 
@@ -103,23 +103,17 @@ def get_fit_zoom_level(locations, map_width, map_height):
     """
     min_lat, max_lat, min_lon, max_lon = get_bounding_box(locations)
 
-    # map_width /= 5
-    # map_height /= 5
-
-    # Constants for zoom calculation
-    TILE_SIZE = 256
-
     # Function to convert latitude to pixel value
     def lat_to_pixel(lat, zoom):
         return (
-            TILE_SIZE
+            tile_size
             * (1 - log(tan(radians(lat)) + 1 / cos(radians(lat))) / pi)
             / 2 * (2 ** zoom)
         )
 
     # Function to convert longitude to pixel value
     def lon_to_pixel(lon, zoom):
-        return TILE_SIZE * (lon + 180) / 360 * (2 ** zoom)
+        return tile_size * (lon + 180) / 360 * (2 ** zoom)
 
     # Determine the best zoom level
     zoom = 1
@@ -144,8 +138,8 @@ def update_map_view(
         lon2,
         mapview=None,
         polyline_layer=None,
-        max_zoom=16
-
+        max_zoom=16,
+        tile_size=256
 ):
     """
     Updates the MapView to ensure that two specified
@@ -178,7 +172,8 @@ def update_map_view(
     z1 = get_fit_zoom_level(
         coordinates,
         map_width,
-        map_height
+        map_height,
+        tile_size
     )
     z2 = get_zoom_for_radius(haversine(lon1, lat1, lon2, lat2))
     zoom_level = int((z1 + z2) / 2)
@@ -190,7 +185,7 @@ def update_map_view(
     return (center_lat, center_lon), zoom_level
 
 
-def findpoints(lat, lon, radius):
+def generate_circle_points(lat, lon, radius, precision=360):
     """
     Generates a list of points that form a circle around a
     given latitude and longitude.
@@ -205,23 +200,22 @@ def findpoints(lat, lon, radius):
         lon (float): The longitude of the central point around
             which the circle is generated.
         radius (float): The radius of the circle in kilometers.
+        precision (int, float): The precision of the circle
 
     Returns:
         list of dict: A list of dictionaries, where each dictionary contains
             latitude ('lat') and longitude ('lon') of a point on the circle.
 
     Example:
-        >>> findpoints(37.7749, -122.4194, 10)
+        >>> generate_circle_points(37.7749, -122.4194, 10)
         [{'lat': 37.78215, 'lon': -122.4194},
         {'lat': 37.78206, 'lon': -122.415}, ...]
     """
-    radius = 1
-    N = 360
 
     # generate points
     circlePoints = []
-    for k in range(N):
-        angle = pi * 2 * k / N
+    for k in range(precision):
+        angle = pi * 2 * k / precision
         dx = radius * cos(angle)
         dy = radius * sin(angle)
         point = {
